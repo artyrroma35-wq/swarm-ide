@@ -1,213 +1,98 @@
 /**
- * 🤖 УНИВЕРСАЛЬНЫЙ LLM КЛИЕНТ С ЧЕТВЕРНЫМ FALLBACK
- * 
- * Nemotron (95) → DeepSeek (85) → Mistral (80) → Agnes (55)
- * 
- * Mistral Console: 500k запросов/день, 50 RPM, 200K TPM — бесплатно
- * Agnes: наш ключ, всегда работает
+ * 🤖 УНИВЕРСАЛЬНЫЙ LLM КЛИЕНТ
+ *
+ * Модели: Nemotron(95) → DeepSeek(85) → Mistral(72-88) → Agnes(55)
+ * Mistral: 5M TPM макс, 7 моделей, Vision, функции
  */
 
-import { getConfig } from './config';
-
 export interface LLMMessage {
-  role: string;
-  content: string;
-  tool_call_id?: string;
-  name?: string;
+  role: string; content: string; tool_call_id?: string; name?: string;
   tool_calls?: Array<{ id: string; type: string; function: { name: string; arguments: string } }>;
 }
-
-export interface ToolDefinition {
-  type: 'function';
-  function: { name: string; description: string; parameters: Record<string, unknown> };
-}
-
-export interface StreamChunk {
-  type: 'reasoning' | 'content' | 'tool_call' | 'done' | 'error';
-  data: unknown;
-}
+export interface ToolDefinition { type: 'function'; function: { name: string; description: string; parameters: Record<string, unknown> }; }
+export interface StreamChunk { type: 'reasoning' | 'content' | 'tool_call' | 'done' | 'error'; data: unknown; }
 
 const BASE_MODELS = [
-  { name: 'nemotron-3-ultra-free', provider: 'opencode', quality: 95, desc: '🏆 Nemotron 3 Ultra' },
-  { name: 'deepseek-v4-flash-free', provider: 'opencode', quality: 85, desc: '⚡ DeepSeek V4 Flash' },
+  { name: 'nemotron-3-ultra-free', provider: 'opencode', quality: 95, desc: 'Nemotron 3 Ultra' },
+  { name: 'deepseek-v4-flash-free', provider: 'opencode', quality: 85, desc: 'DeepSeek V4 Flash' },
 ];
 
-async function makeRequest(
-  model: string, provider: string,
-  messages: LLMMessage[], tools: ToolDefinition[],
-  options?: { maxTokens?: number }
-): Promise<Response> {
-  const config = getConfig();
+function getMistralModels(cfg: any): any[] {
+  if (!cfg.mistralApiKey) return [];
+  return [
+    { name: 'codestral-latest', provider: 'mistral', quality: 88, desc: 'Codestral' },
+    { name: 'mistral-large-latest', provider: 'mistral', quality: 86, desc: 'Mistral Large' },
+    { name: 'devstral-latest', provider: 'mistral', quality: 84, desc: 'Devstral (1M TPM)' },
+    { name: 'labs-leanstral-1-5-1', provider: 'mistral', quality: 80, desc: 'Leanstral (5M TPM!)' },
+    { name: 'mistral-medium-latest', provider: 'mistral', quality: 78, desc: 'Mistral Medium' },
+    { name: 'mistral-small-2603', provider: 'mistral', quality: 72, desc: 'Mistral Small' },
+    { name: 'ministral-8b-latest', provider: 'mistral', quality: 65, desc: 'Ministral 8B' },
+  ];
+}
+
+async function makeRequest(model: string, provider: string, messages: LLMMessage[], tools: ToolDefinition[], opts?: any): Promise<Response> {
+  const { getConfig } = await import('./config');
+  const cfg = getConfig();
   let url: string, key: string;
-
-  switch (provider) {
-    case 'mistral':
-      url = `${config.mistralEndpoint}/chat/completions`;
-      key = config.mistralApiKey;
-      break;
-    case 'agnes':
-      url = `${config.agnesEndpoint}/chat/completions`;
-      key = config.agnesApiKey;
-      break;
-    default: // opencode
-      url = `${config.opencodeZenBaseUrl}/chat/completions`;
-      key = config.opencodeZenApiKey;
-  }
-
-  const payload: Record<string, unknown> = {
-    model,
-    messages: messages.map(m => {
-      const { tool_calls, ...rest } = m;
-      return m.role === 'assistant' && tool_calls ? { ...rest, tool_calls } : rest;
-    }),
-    tools: tools.length > 0 ? tools : undefined,
-    tool_choice: tools.length > 0 ? 'auto' : undefined,
-    stream: true,
-    max_tokens: options?.maxTokens ?? 64000,
-    temperature: 0.7,
-  };
-
+  if (provider === 'mistral') { url = `${cfg.mistralEndpoint}/chat/completions`; key = cfg.mistralApiKey; }
+  else if (provider === 'agnes') { url = `${cfg.agnesEndpoint}/chat/completions`; key = cfg.agnesApiKey; }
+  else { url = `${cfg.opencodeZenBaseUrl}/chat/completions`; key = cfg.opencodeZenApiKey; }
+  const payload: any = { model, messages: messages.map(m => { const { tool_calls, ...rest } = m; return m.role === 'assistant' && tool_calls ? { ...rest, tool_calls } : rest; }), stream: true, max_tokens: opts?.maxTokens || 64000, temperature: 0.7 };
+  if (tools.length > 0) { payload.tools = tools; payload.tool_choice = 'auto'; }
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (key) headers['Authorization'] = `Bearer ${key}`;
   return fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
 }
 
 async function* streamFromResponse(response: Response): AsyncGenerator<StreamChunk> {
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    yield { type: 'error', data: `${response.status}: ${text.slice(0, 100)}` };
-    return;
-  }
-  if (!response.body) {
-    yield { type: 'error', data: 'Нет тела ответа' };
-    return;
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
+  if (!response.ok) { const t = await response.text().catch(() => ''); yield { type: 'error', data: `${response.status}: ${t.slice(0, 100)}` }; return; }
+  if (!response.body) { yield { type: 'error', data: 'empty' }; return; }
+  const reader = response.body.getReader(); const decoder = new TextDecoder(); let buf = '';
   try {
     while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() ?? '';
-
+      const { done, value } = await reader.read(); if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n'); buf = lines.pop() || '';
       for (const line of lines) {
-        const t = line.trim();
-        if (!t || !t.startsWith('data: ')) continue;
-        const d = t.slice(6).trim();
-        if (d === '[DONE]') return;
-        try {
-          const chunk = JSON.parse(d);
-          const choice = chunk.choices?.[0];
-          const delta = choice?.delta;
-          if (delta?.reasoning || delta?.reasoning_content)
-            yield { type: 'reasoning', data: delta.reasoning ?? delta.reasoning_content };
-          if (typeof delta?.content === 'string')
-            yield { type: 'content', data: delta.content };
-          
-          // Mistral uses delta.tool_calls differently
-          if (delta?.tool_calls) {
-            for (const tc of delta.tool_calls)
-              yield { type: 'tool_call', data: { index: tc.index ?? 0, id: tc.id, name: tc.function?.name, arguments: tc.function?.arguments ?? '' } };
-          }
-          if (typeof choice?.finish_reason !== 'undefined')
-            yield { type: 'done', data: { finishReason: choice.finish_reason } };
+        const t = line.trim(); if (!t || !t.startsWith('data: ')) continue;
+        const d = t.slice(6).trim(); if (d === '[DONE]') return;
+        try { const ch = JSON.parse(d); const c = ch.choices?.[0]; const dt = c?.delta;
+          if (dt?.reasoning || dt?.reasoning_content) yield { type: 'reasoning', data: dt.reasoning || dt.reasoning_content };
+          if (typeof dt?.content === 'string') yield { type: 'content', data: dt.content };
+          if (dt?.tool_calls) { for (const tc of dt.tool_calls) yield { type: 'tool_call', data: { index: tc.index || 0, id: tc.id, name: tc.function?.name, arguments: tc.function?.arguments || '' } }; }
+          if (typeof c?.finish_reason !== 'undefined') yield { type: 'done', data: { finishReason: c.finish_reason } };
         } catch {}
       }
     }
   } finally { reader.releaseLock(); }
 }
 
-/**
- * 🧠 ПОТОКОВЫЙ ЧАТ С ЧЕТВЕРНЫМ FALLBACK
- * 
- * Nemotron → DeepSeek → Mistral (если есть ключ) → Agnes (если есть ключ)
- * При 403/429/ошибке — мгновенное переключение на следующую модель
- */
-export async function* streamChat(
-  messages: LLMMessage[],
-  tools: ToolDefinition[],
-  options?: { model?: string; maxTokens?: number }
-): AsyncGenerator<StreamChunk> {
-  const config = getConfig();
-  
-  // Собираем модели динамически (только те, для которых есть ключи)
-  const modelsToTry: Array<{ name: string; provider: string; quality: number; desc: string }> = [...BASE_MODELS];
-  
-  if (config.mistralApiKey) {
-    modelsToTry.push({ name: config.mistralModel, provider: 'mistral', quality: 80, desc: '🔥 Mistral ' + config.mistralModel });
-  }
-  
-  if (config.agnesApiKey) {
-    modelsToTry.push({ name: 'agnes-2.0-flash', provider: 'agnes', quality: 55, desc: '💰 Agnes 2.0 Flash' });
-  }
-
-  // Если указана конкретная модель
-  if (options?.model) {
-    const found = modelsToTry.find(m => m.name === options.model);
-    if (found) {
-      modelsToTry.splice(0, modelsToTry.length, found);
-    }
-  }
-
-  let lastError = '';
-
-  for (const model of modelsToTry) {
+export async function* streamChat(messages: LLMMessage[], tools: ToolDefinition[], options?: any): AsyncGenerator<StreamChunk> {
+  const { getConfig } = await import('./config');
+  const cfg = getConfig();
+  const models = [...BASE_MODELS, ...getMistralModels(cfg)];
+  if (cfg.agnesApiKey) models.push({ name: 'agnes-2.0-flash', provider: 'agnes', quality: 55, desc: 'Agnes 2.0 Flash' });
+  if (options?.model) { const f = models.find((m: any) => m.name === options.model); if (f) { models.length = 0; models.push(f); } }
+  let lastErr = '';
+  for (const m of models) {
     try {
-      const response = await makeRequest(model.name, model.provider, messages, tools, options);
-
-      if (response.ok) {
-        for await (const chunk of streamFromResponse(response)) {
-          yield chunk;
-        }
-        return;
-      }
-
-      const status = response.status;
-      if (status === 403 || status === 429) {
-        lastError = `${model.desc}: rate limit (${status})`;
-        continue;
-      }
-      if (status >= 500) {
-        lastError = `${model.desc}: провайдер не отвечает (${status})`;
-        continue;
-      }
-      const text = await response.text().catch(() => '');
-      lastError = `${model.desc}: ${status} ${text.slice(0, 50)}`;
-      
-    } catch (e: any) {
-      lastError = `${model.desc}: ${e.message?.slice(0, 100) || 'ошибка'}`;
-    }
+      const r = await makeRequest(m.name, m.provider, messages, tools, options);
+      if (r.ok) { for await (const chunk of streamFromResponse(r)) yield chunk; return; }
+      const s = r.status;
+      if (s === 403 || s === 429) { lastErr = `${m.desc}: rate limit`; continue; }
+      if (s >= 500) { lastErr = `${m.desc}: провайдер упал`; continue; }
+      lastErr = `${m.desc}: ${s} ${(await r.text().catch(() => '')).slice(0, 50)}`;
+    } catch (e: any) { lastErr = `${m.desc}: ${e.message?.slice(0, 100) || 'ошибка'}`; }
   }
-
-  yield { type: 'error', data: `❌ Все модели недоступны. ${lastError}` };
+  yield { type: 'error', data: `Все модели недоступны. ${lastErr}` };
 }
 
-/**
- * НЕПОТОКОВЫЙ ЧАТ
- */
-export async function chat(
-  messages: LLMMessage[],
-  tools: ToolDefinition[],
-  options?: { model?: string; maxTokens?: number }
-): Promise<{ content: string; toolCalls: Array<{ id: string; name: string; arguments: string }> }> {
-  let content = '';
-  const toolCalls: Array<{ id: string; name: string; arguments: string }> = [];
-
+export async function chat(messages: LLMMessage[], tools: ToolDefinition[], options?: any): Promise<{ content: string; toolCalls: any[] }> {
+  let content = ''; const toolCalls: any[] = [];
   for await (const chunk of streamChat(messages, tools, options)) {
     switch (chunk.type) {
       case 'content': content += chunk.data as string; break;
-      case 'tool_call': {
-        const tc = chunk.data as any;
-        const existing = toolCalls.find(t => t.name === tc.name);
-        if (existing) existing.arguments += tc.arguments || '';
-        else toolCalls.push({ id: tc.id || `call_${Date.now()}`, name: tc.name || 'unknown', arguments: tc.arguments || '' });
-        break;
-      }
+      case 'tool_call': { const tc = chunk.data as any; const e = toolCalls.find((t: any) => t.name === tc.name); if (e) e.arguments += tc.arguments || ''; else toolCalls.push({ id: tc.id || `c_${Date.now()}`, name: tc.name || '?', arguments: tc.arguments || '' }); break; }
       case 'error': throw new Error(chunk.data as string);
     }
   }
