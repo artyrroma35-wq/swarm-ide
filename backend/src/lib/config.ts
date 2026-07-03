@@ -21,3 +21,9 @@ export function getConfig(): AppConfig {
     hfApiKey: process.env.HF_API_KEY ?? '',
   };
 }
+
+  // Mistral
+  mistralApiKey: process.env.MISTRAL_API_KEY ?? '',
+  mistralModel: process.env.MISTRAL_MODEL ?? 'mistral-large-latest',
+  mistralEndpoint: process.env.MISTRAL_ENDPOINT ?? 'https://api.mistral.ai/v1',
+}

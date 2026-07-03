@@ -1,9 +1,10 @@
 /**
- * 🤖 УНИВЕРСАЛЬНЫЙ LLM КЛИЕНТ С ТРОЙНЫМ FALLBACK
+ * 🤖 УНИВЕРСАЛЬНЫЙ LLM КЛИЕНТ С ЧЕТВЕРНЫМ FALLBACK
  * 
- * Защита от тротлинга: Nemotron → DeepSeek → Agnes
- * При 403/429 — мгновенное переключение на следующую модель
- * Agnes 2.0 Flash всегда работает (наш ключ)
+ * Nemotron (95) → DeepSeek (85) → Mistral (80) → Agnes (55)
+ * 
+ * Mistral Console: 500k запросов/день, 50 RPM, 200K TPM — бесплатно
+ * Agnes: наш ключ, всегда работает
  */
 
 import { getConfig } from './config';
@@ -26,10 +27,9 @@ export interface StreamChunk {
   data: unknown;
 }
 
-const MODELS = [
+const BASE_MODELS = [
   { name: 'nemotron-3-ultra-free', provider: 'opencode', quality: 95, desc: '🏆 Nemotron 3 Ultra' },
   { name: 'deepseek-v4-flash-free', provider: 'opencode', quality: 85, desc: '⚡ DeepSeek V4 Flash' },
-  { name: 'agnes-2.0-flash', provider: 'agnes', quality: 55, desc: '💰 Agnes 2.0 Flash' },
 ];
 
 async function makeRequest(
@@ -38,10 +38,21 @@ async function makeRequest(
   options?: { maxTokens?: number }
 ): Promise<Response> {
   const config = getConfig();
-  const url = provider === 'agnes'
-    ? `${config.agnesEndpoint}/chat/completions`
-    : `${config.opencodeZenBaseUrl}/chat/completions`;
-  const key = provider === 'agnes' ? config.agnesApiKey : config.opencodeZenApiKey;
+  let url: string, key: string;
+
+  switch (provider) {
+    case 'mistral':
+      url = `${config.mistralEndpoint}/chat/completions`;
+      key = config.mistralApiKey;
+      break;
+    case 'agnes':
+      url = `${config.agnesEndpoint}/chat/completions`;
+      key = config.agnesApiKey;
+      break;
+    default: // opencode
+      url = `${config.opencodeZenBaseUrl}/chat/completions`;
+      key = config.opencodeZenApiKey;
+  }
 
   const payload: Record<string, unknown> = {
     model,
@@ -97,6 +108,8 @@ async function* streamFromResponse(response: Response): AsyncGenerator<StreamChu
             yield { type: 'reasoning', data: delta.reasoning ?? delta.reasoning_content };
           if (typeof delta?.content === 'string')
             yield { type: 'content', data: delta.content };
+          
+          // Mistral uses delta.tool_calls differently
           if (delta?.tool_calls) {
             for (const tc of delta.tool_calls)
               yield { type: 'tool_call', data: { index: tc.index ?? 0, id: tc.id, name: tc.function?.name, arguments: tc.function?.arguments ?? '' } };
@@ -110,8 +123,10 @@ async function* streamFromResponse(response: Response): AsyncGenerator<StreamChu
 }
 
 /**
- * 🧠 ПОТОКОВЫЙ ЧАТ С ТРОЙНЫМ FALLBACK
- * При 403/429 — автоматическое переключение на следующую модель
+ * 🧠 ПОТОКОВЫЙ ЧАТ С ЧЕТВЕРНЫМ FALLBACK
+ * 
+ * Nemotron → DeepSeek → Mistral (если есть ключ) → Agnes (если есть ключ)
+ * При 403/429/ошибке — мгновенное переключение на следующую модель
  */
 export async function* streamChat(
   messages: LLMMessage[],
@@ -119,11 +134,16 @@ export async function* streamChat(
   options?: { model?: string; maxTokens?: number }
 ): AsyncGenerator<StreamChunk> {
   const config = getConfig();
-  const modelsToTry = [...MODELS];
-
-  // Если Agnes нет — убираем
-  if (!config.agnesApiKey) {
-    modelsToTry.pop();
+  
+  // Собираем модели динамически (только те, для которых есть ключи)
+  const modelsToTry: Array<{ name: string; provider: string; quality: number; desc: string }> = [...BASE_MODELS];
+  
+  if (config.mistralApiKey) {
+    modelsToTry.push({ name: config.mistralModel, provider: 'mistral', quality: 80, desc: '🔥 Mistral ' + config.mistralModel });
+  }
+  
+  if (config.agnesApiKey) {
+    modelsToTry.push({ name: 'agnes-2.0-flash', provider: 'agnes', quality: 55, desc: '💰 Agnes 2.0 Flash' });
   }
 
   // Если указана конкретная модель
@@ -144,35 +164,27 @@ export async function* streamChat(
         for await (const chunk of streamFromResponse(response)) {
           yield chunk;
         }
-        return; // Успешно — выходим
+        return;
       }
 
-      // Обработка ошибок
       const status = response.status;
-      
-      // 403/429 — тротлинг, мгновенно переключаемся
       if (status === 403 || status === 429) {
         lastError = `${model.desc}: rate limit (${status})`;
         continue;
       }
-      
-      // 500+ — провайдер упал, переключаемся
       if (status >= 500) {
         lastError = `${model.desc}: провайдер не отвечает (${status})`;
         continue;
       }
-
       const text = await response.text().catch(() => '');
       lastError = `${model.desc}: ${status} ${text.slice(0, 50)}`;
       
     } catch (e: any) {
       lastError = `${model.desc}: ${e.message?.slice(0, 100) || 'ошибка'}`;
-      // Ошибка сети — переключаемся
     }
   }
 
-  // Все модели упали — возвращаем ошибку
-  yield { type: 'error', data: `❌ ${lastError}` };
+  yield { type: 'error', data: `❌ Все модели недоступны. ${lastError}` };
 }
 
 /**
@@ -188,9 +200,7 @@ export async function chat(
 
   for await (const chunk of streamChat(messages, tools, options)) {
     switch (chunk.type) {
-      case 'content':
-        content += chunk.data as string;
-        break;
+      case 'content': content += chunk.data as string; break;
       case 'tool_call': {
         const tc = chunk.data as any;
         const existing = toolCalls.find(t => t.name === tc.name);
@@ -198,8 +208,7 @@ export async function chat(
         else toolCalls.push({ id: tc.id || `call_${Date.now()}`, name: tc.name || 'unknown', arguments: tc.arguments || '' });
         break;
       }
-      case 'error':
-        throw new Error(chunk.data as string);
+      case 'error': throw new Error(chunk.data as string);
     }
   }
   return { content, toolCalls };
