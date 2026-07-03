@@ -8,3 +8,4 @@ build/
 .agent_logs/
 .agent_stream_logs/
 .agent_llm_requests/
+.env.local
