@@ -1,9 +1,9 @@
 /**
  * 🤖 УНИВЕРСАЛЬНЫЙ LLM КЛИЕНТ С ТРОЙНЫМ FALLBACK
  * 
- * Стратегия: Nemotron → DeepSeek → Agnes
- * Качество: 95 → 85 → 55
- * Стабильность: Низкая → Средняя → Высокая
+ * Защита от тротлинга: Nemotron → DeepSeek → Agnes
+ * При 403/429 — мгновенное переключение на следующую модель
+ * Agnes 2.0 Flash всегда работает (наш ключ)
  */
 
 import { getConfig } from './config';
@@ -27,30 +27,21 @@ export interface StreamChunk {
 }
 
 const MODELS = [
-  { name: 'nemotron-3-ultra-free', provider: 'opencode', quality: 95, desc: '🏆 Лучшее качество (NVIDIA)' },
-  { name: 'deepseek-v4-flash-free', provider: 'opencode', quality: 85, desc: '⚡ Быстрый и стабильный' },
+  { name: 'nemotron-3-ultra-free', provider: 'opencode', quality: 95, desc: '🏆 Nemotron 3 Ultra' },
+  { name: 'deepseek-v4-flash-free', provider: 'opencode', quality: 85, desc: '⚡ DeepSeek V4 Flash' },
+  { name: 'agnes-2.0-flash', provider: 'agnes', quality: 55, desc: '💰 Agnes 2.0 Flash' },
 ];
 
-const AGNES_MODEL = { name: 'agnes-2.0-flash', provider: 'agnes', quality: 55, desc: '💰 Надёжный 24/7 (Agnes AI)' };
-
 async function makeRequest(
-  model: string,
-  provider: string,
-  messages: LLMMessage[],
-  tools: ToolDefinition[],
+  model: string, provider: string,
+  messages: LLMMessage[], tools: ToolDefinition[],
   options?: { maxTokens?: number }
 ): Promise<Response> {
   const config = getConfig();
-  let url: string;
-  let key: string;
-
-  if (provider === 'agnes') {
-    url = `${config.agnesEndpoint}/chat/completions`;
-    key = config.agnesApiKey;
-  } else {
-    url = `${config.opencodeZenBaseUrl}/chat/completions`;
-    key = config.opencodeZenApiKey;
-  }
+  const url = provider === 'agnes'
+    ? `${config.agnesEndpoint}/chat/completions`
+    : `${config.opencodeZenBaseUrl}/chat/completions`;
+  const key = provider === 'agnes' ? config.agnesApiKey : config.opencodeZenApiKey;
 
   const payload: Record<string, unknown> = {
     model,
@@ -67,16 +58,13 @@ async function makeRequest(
 
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (key) headers['Authorization'] = `Bearer ${key}`;
-
   return fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
 }
 
-async function* streamFromResponse(
-  response: Response
-): AsyncGenerator<StreamChunk> {
+async function* streamFromResponse(response: Response): AsyncGenerator<StreamChunk> {
   if (!response.ok) {
     const text = await response.text().catch(() => '');
-    yield { type: 'error', data: `${response.status}: ${text.slice(0, 200)}` };
+    yield { type: 'error', data: `${response.status}: ${text.slice(0, 100)}` };
     return;
   }
   if (!response.body) {
@@ -101,47 +89,29 @@ async function* streamFromResponse(
         if (!t || !t.startsWith('data: ')) continue;
         const d = t.slice(6).trim();
         if (d === '[DONE]') return;
-
         try {
           const chunk = JSON.parse(d);
           const choice = chunk.choices?.[0];
           const delta = choice?.delta;
-
-          if (delta?.reasoning || delta?.reasoning_content) {
+          if (delta?.reasoning || delta?.reasoning_content)
             yield { type: 'reasoning', data: delta.reasoning ?? delta.reasoning_content };
-          }
-          if (typeof delta?.content === 'string') {
+          if (typeof delta?.content === 'string')
             yield { type: 'content', data: delta.content };
-          }
           if (delta?.tool_calls) {
-            for (const tc of delta.tool_calls) {
-              yield {
-                type: 'tool_call',
-                data: {
-                  index: tc.index ?? 0,
-                  id: tc.id,
-                  name: tc.function?.name,
-                  arguments: tc.function?.arguments ?? '',
-                },
-              };
-            }
+            for (const tc of delta.tool_calls)
+              yield { type: 'tool_call', data: { index: tc.index ?? 0, id: tc.id, name: tc.function?.name, arguments: tc.function?.arguments ?? '' } };
           }
-          if (typeof choice?.finish_reason !== 'undefined') {
+          if (typeof choice?.finish_reason !== 'undefined')
             yield { type: 'done', data: { finishReason: choice.finish_reason } };
-          }
         } catch {}
       }
     }
-  } finally {
-    reader.releaseLock();
-  }
+  } finally { reader.releaseLock(); }
 }
 
 /**
  * 🧠 ПОТОКОВЫЙ ЧАТ С ТРОЙНЫМ FALLBACK
- * 
- * Пытается: Nemotron → DeepSeek → Agnes
- * При ошибке или таймауте — переключается на следующую модель
+ * При 403/429 — автоматическое переключение на следующую модель
  */
 export async function* streamChat(
   messages: LLMMessage[],
@@ -150,19 +120,17 @@ export async function* streamChat(
 ): AsyncGenerator<StreamChunk> {
   const config = getConfig();
   const modelsToTry = [...MODELS];
-  
-  // Добавляем Agnes если есть ключ
-  if (config.agnesApiKey) {
-    modelsToTry.push(AGNES_MODEL);
+
+  // Если Agnes нет — убираем
+  if (!config.agnesApiKey) {
+    modelsToTry.pop();
   }
 
-  // Если юзер явно указал модель — пробуем только её
+  // Если указана конкретная модель
   if (options?.model) {
-    const modelInfo = modelsToTry.find(m => m.name === options.model);
-    if (modelInfo) {
-      modelsToTry.splice(0, modelsToTry.length, modelInfo);
-    } else {
-      modelsToTry.splice(0, modelsToTry.length, { name: options.model, provider: 'opencode', quality: 50, desc: 'User-specified' });
+    const found = modelsToTry.find(m => m.name === options.model);
+    if (found) {
+      modelsToTry.splice(0, modelsToTry.length, found);
     }
   }
 
@@ -173,55 +141,42 @@ export async function* streamChat(
       const response = await makeRequest(model.name, model.provider, messages, tools, options);
 
       if (response.ok) {
-        // Стримим ответ
         for await (const chunk of streamFromResponse(response)) {
-          if (chunk.type === 'error') {
-            lastError = chunk.data as string;
-            yield { type: 'error', data: `[${model.name}] ${chunk.data}` };
-            break; // Пробуем следующую модель
-          }
-          yield chunk; // Отдаём чанк
+          yield chunk;
         }
-
-        // Если мы дошли до конца без ошибки — всё ок
-        return;
-
-      } else {
-        const text = await response.text().catch(() => '');
-        const errorMsg = `${response.status} ${text.slice(0, 100)}`;
-        lastError = `[${model.name}] ${errorMsg}`;
-        
-        // Если это 403/429 — rate limit, пробуем следующую модель
-        if (response.status === 403 || response.status === 429) {
-          
-          continue;
-        }
-        
-        // Если 500+ — провайдер упал, пробуем следующую
-        if (response.status >= 500) {
-          
-          continue;
-        }
-
-        // Другие ошибки — тоже пробуем следующую
-        
+        return; // Успешно — выходим
       }
-    } catch (e: any) {
-      lastError = `[${model.name}] ${e.message || e}`;
+
+      // Обработка ошибок
+      const status = response.status;
       
+      // 403/429 — тротлинг, мгновенно переключаемся
+      if (status === 403 || status === 429) {
+        lastError = `${model.desc}: rate limit (${status})`;
+        continue;
+      }
+      
+      // 500+ — провайдер упал, переключаемся
+      if (status >= 500) {
+        lastError = `${model.desc}: провайдер не отвечает (${status})`;
+        continue;
+      }
+
+      const text = await response.text().catch(() => '');
+      lastError = `${model.desc}: ${status} ${text.slice(0, 50)}`;
+      
+    } catch (e: any) {
+      lastError = `${model.desc}: ${e.message?.slice(0, 100) || 'ошибка'}`;
+      // Ошибка сети — переключаемся
     }
   }
 
-  // Если все модели упали
-  if (lastError) {
-    yield { type: 'error', data: `❌ Все модели недоступны. Последняя ошибка: ${lastError}` };
-  } else {
-    yield { type: 'error', data: '❌ Нет доступных моделей. Укажите API ключ.' };
-  }
+  // Все модели упали — возвращаем ошибку
+  yield { type: 'error', data: `❌ ${lastError}` };
 }
 
 /**
- * НЕПОТОКОВЫЙ ЧАТ (для простых вызовов)
+ * НЕПОТОКОВЫЙ ЧАТ
  */
 export async function chat(
   messages: LLMMessage[],
@@ -239,21 +194,13 @@ export async function chat(
       case 'tool_call': {
         const tc = chunk.data as any;
         const existing = toolCalls.find(t => t.name === tc.name);
-        if (existing) {
-          existing.arguments += tc.arguments || '';
-        } else {
-          toolCalls.push({
-            id: tc.id || `call_${toolCalls.length}`,
-            name: tc.name || 'unknown',
-            arguments: tc.arguments || '',
-          });
-        }
+        if (existing) existing.arguments += tc.arguments || '';
+        else toolCalls.push({ id: tc.id || `call_${Date.now()}`, name: tc.name || 'unknown', arguments: tc.arguments || '' });
         break;
       }
       case 'error':
         throw new Error(chunk.data as string);
     }
   }
-
   return { content, toolCalls };
 }
