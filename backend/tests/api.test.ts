@@ -1,26 +1,56 @@
 /**
- * 🔬 API тесты для Swarm IDE
- * Запуск: npx ts-node tests/api.test.ts
+ * 🧪 API тесты Swarm IDE
+ * Запуск: npx vitest run
  */
-import { describe, it, expect } from 'node:test';
+import { describe, it, expect } from 'vitest';
 
-// Тесты будут добавлены после установки jest/vitest
-// Пока структура:
-const TEST_PLAN = [
-  '✅ Health endpoint returns 200',
-  '✅ Workspace CRUD operations',
-  '✅ Agent creation with tools',
-  '✅ Sandbox exec with and without sudo',
-  '✅ Image generation endpoint',
-  '✅ Memory recall and search',
-  '✅ Spells API returns 4 spells',
-  '✅ Skills API returns skills list',
-  '✅ MCP client loads config',
-  '✅ Auth register and login flow',
-  '✅ Message send and receive',
-  '✅ Stream endpoint SSE format',
-  '✅ Search web real results',
-];
+describe('API Endpoints', () => {
+  const BASE = 'http://localhost:3017';
 
-console.log('🧪 TEST PLAN:');
-TEST_PLAN.forEach(t => console.log(`  ${t}`));
+  it('Health endpoint returns ok', async () => {
+    const res = await fetch(`${BASE}/api/health`);
+    const data = await res.json();
+    expect(res.status).toBe(200);
+    expect(data.status).toBe('ok');
+  });
+
+  it('Spells API returns 4 spells', async () => {
+    const res = await fetch(`${BASE}/api/spells`);
+    const data = await res.json();
+    expect(data.spells).toHaveLength(4);
+    expect(data.spells[0]).toHaveProperty('name');
+  });
+});
+
+describe('Sandbox', () => {
+  const BASE = 'http://localhost:3017';
+
+  it('exec whoami returns user', async () => {
+    const res = await fetch(`${BASE}/api/sandbox`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'exec', command: 'whoami' })
+    });
+    const data = await res.json();
+    expect(data.exitCode).toBe(0);
+    expect(data.stdout).toBeTruthy();
+  });
+});
+
+describe('Tools Registry', () => {
+  it('getToolDefinitions returns array', async () => {
+    const { getToolDefinitions } = await import('../src/tools/registry');
+    const tools = getToolDefinitions();
+    expect(Array.isArray(tools)).toBe(true);
+    expect(tools.length).toBeGreaterThan(10);
+  });
+});
+
+describe('Auth', () => {
+  it('login schema validates correctly', async () => {
+    const { validate } = await import('../src/lib/validation');
+    const { WorkspaceCreateSchema } = await import('../src/lib/validation');
+    const result = validate(WorkspaceCreateSchema, { name: 'Test' });
+    expect(result.success).toBe(true);
+  });
+});

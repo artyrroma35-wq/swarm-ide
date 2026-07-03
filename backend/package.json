@@ -10,24 +10,29 @@
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "drizzle-orm": "^0.33.0",
+    "framer-motion": "^11.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "lucide-react": "^0.454.0",
+    "morgan": "^1.11.0",
     "next": "^14.2.15",
+    "pino": "^10.3.1",
+    "postgres": "^3.4.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "lucide-react": "^0.454.0",
-    "drizzle-orm": "^0.33.0",
-    "postgres": "^3.4.4",
-    "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2",
+    "vitest": "^4.1.9",
     "ws": "^8.16.0",
-    "framer-motion": "^11.2.0"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/morgan": "^1.9.10",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "typescript": "^5",
-    "tailwindcss": "^3.4.13",
+    "autoprefixer": "^10",
     "postcss": "^8",
-    "autoprefixer": "^10"
+    "tailwindcss": "^3.4.13",
+    "typescript": "^5"
   }
 }

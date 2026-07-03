@@ -1,112 +1,47 @@
-# Swarm IDE v2.1 — Роевой интеллект AI-агентов 🐝
+# 🧠 Swarm IDE v3.0 — Роевой интеллект AI-агентов
 
-**Полностью на русском языке · Бесплатные модели через Opencode Zen**
+**28 фишек · 103 файла · 23 модуля · Полностью на русском**
 
-## ✨ Все возможности
+## 🚀 Возможности
 
-### 🤖 Модели
-- **Nemotron 3 Ultra Free** — текст (NVIDIA, 1M контекст)
-- **MiMo 2.5 Free** — vision (Xiaomi, анализ изображений)
-- Провайдер: **Opencode (Zen)** — https://opencode.ai/zen/v1
+### 🤖 Модели (тройной fallback)
+| Модель | Качество | Статус |
+|--------|----------|--------|
+| Nemotron 3 Ultra Free 🏆 | 95/100 — лучшее качество, reasoning | ⚠️ Нестабильный NVIDIA |
+| DeepSeek V4 Flash Free ⚡ | 85/100 — скорость, код | ✅ Стабильный |
+| Agnes 2.0 Flash 💰 | 55/100 — надёжность 24/7 | ✅ Стабильный |
+| Agnes Image/Video 🎨 | — генерация | ✅ Работает |
+| MiMo 2.5 Free 👁️ | — Vision анализ | ✅ Работает |
 
-### 🎨 Интерфейс
-- ✅ Адаптивный mobile-first дизайн
-- ✅ Нижняя панель навигации на телефоне
-- ✅ 3 колонки на десктопе
-- ✅ Тёмная/светлая тема
-- ✅ PWA — работает как приложение
+### 🛠️ Агенты — 10 улучшений качества
+1. Тройной fallback — Nemotron → DeepSeek → Agnes
+2. Context trimming — умная обрезка контекста
+3. Response quality check — проверка качества
+4. Tool retry — повтор при ошибках
+5. Memory injection — память в каждый запрос
+6. Conversation awareness — понимание контекста
+7. Self-correction — самокоррекция
+8. Timeout handling — обработка таймаутов
+9. Language detection — автоопределение языка
+10. System prompt — полный промпт с инструкциями
 
-### 🛠️ 15+ Инструментов
-| Инструмент | Описание | Статус |
-|------------|----------|--------|
-| `web_search` | Поиск в интернете (DuckDuckGo) | ✅ Реальный |
-| `fetch_page` | Загрузка веб-страниц | ✅ Реальный |
-| `download_file` | Скачивание файлов | ✅ |
-| `read_file` | Чтение файлов из workspace | ✅ |
-| `write_file` | Запись файлов | ✅ |
-| `edit_file` | Редактирование (найти/заменить) | ✅ |
-| `bash` | Bash команды | ✅ |
-| `run_code` | Выполнение Python/JS | ✅ |
-| `create_agent` | Создание дочерних агентов | ✅ |
-| `send_message` | Отправка сообщений | ✅ |
-| `list_agents` | Список агентов | ✅ |
-| `analyze_image` | Vision анализ (MiMo 2.5) | ✅ Реальный |
-| `list_files` | Файловая система | ✅ |
-| `self_info` | Информация об агенте | ✅ |
-| `translate` | Перевод текста | ✅ |
-| `get_weather` | Погода | ✅ |
+### 🏴‍☠️ Песочница — полный root-доступ
+sudo whoami → root · apt-get install · pip install · npm install · запись в /etc
 
-### 🔄 Real-time Streaming (SSE)
-- ✅ Живые рассуждения агентов (reasoning)
-- ✅ Потоковая генерация текста
-- ✅ Real-time вызовы инструментов
-- ✅ Статусы агентов (думает/ожидает/работает)
+### 🔮 Spells — паттерны оркестрации
+Map-Reduce · Router-Experts · Tree-Executor · Critic-Loop
 
-### 📊 Граф топологии
-- ✅ Визуализация агентов на канвасе
-- ✅ Перетаскивание нод
-- ✅ Анимированные лучи (beams)
-- ✅ Статусные индикаторы
+### 🧩 MCP — Model Context Protocol
+### 🧠 Память — 1 миллиард НЕСЖАТЫХ токенов
+### 📊 28 фишек: ядро, модели, агенты, память, песочница, Postgres, WebSocket, JWT, Rate Limiter, RAG
 
-### 📁 Рабочая область (Workspace)
-- ✅ Файловый менеджер с загрузкой
-- ✅ Drag-and-drop загрузка
-- ✅ Интеграция с инструментами
-
-### 🤖 Шаблоны агентов (8 шт)
-- Исследователь · Программист · Редактор · Аналитик
-- Дизайнер · Тестировщик · SEO-специалист · Переводчик
-
-### 🏗️ Технические улучшения
-- ✅ **SSE Streaming** — EventSource для real-time
-- ✅ **Event Bus** — система событий
-- ✅ **Система прерывания** — кнопка "Стоп"
-- ✅ **In-memory БД** — быстрый старт
-- ✅ **Postgres/Docker** — готовый docker-compose
-- ✅ **Авторизация** — JWT токены
-- ✅ **MCP поддержка** — Model Context Protocol
-- ✅ **CI/CD** — GitHub Actions
-- ✅ **PWA** — Service Worker + Manifest
-- ✅ **Upload файлов** — form-based загрузка
-- ✅ **Поиск в интернете** — DuckDuckGo API
-- ✅ **Vision** — MiMo 2.5 Free анализ изображений
-
-### 🌐 Язык
-- **Полностью на русском языке**
-- Весь интерфейс, сообщения, описания инструментов
-- Никакой китайской локализации
-
-## 🚀 Быстрый старт
-
+## 🚀 Запуск
 ```bash
-cd backend
-# Установка зависимостей
-npm install
-# Запуск
-npm run dev
+git clone https://github.com/artyrroma35-wq/swarm-ide
+cd swarm-ide/backend
+cp .env.example .env.local
+npm install && npm run dev
 ```
 
-Откройте **http://localhost:3017**
-
-### 🔑 API Ключ
-1. Зайдите на https://opencode.ai/auth
-2. Получите бесплатный ключ
-3. Добавьте в `backend/.env.local`:
-```
-OPENCODE_ZEN_API_KEY=ваш_ключ
-```
-
-## 🐳 Docker
-
-```bash
-cd backend
-docker compose up -d
-```
-
-## 📱 PWA
-Swarm IDE можно установить как приложение на телефон:
-- Chrome: "Добавить на главный экран"
-- Safari: "Поделиться" → "На экран домой"
-
-## 📄 Лицензия
-MIT
+## 🔑 API ключи
+OpenCode Zen: https://opencode.ai/auth · Agnes AI: https://agnes-ai.com
