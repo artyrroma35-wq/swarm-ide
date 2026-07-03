@@ -7,6 +7,11 @@ export interface AppConfig {
   agnesApiKey: string;
   agnesEndpoint: string;
   hfApiKey: string;
+  mistralApiKey: string;
+  mistralEndpoint: string;
+  mistralModel: string;
+  embedModel: string;
+  ocrModel: string;
 }
 
 export function getConfig(): AppConfig {
@@ -19,11 +24,10 @@ export function getConfig(): AppConfig {
     agnesApiKey: process.env.AGNES_API_KEY ?? '',
     agnesEndpoint: process.env.AGNES_ENDPOINT ?? 'https://apihub.agnes-ai.com/v1',
     hfApiKey: process.env.HF_API_KEY ?? '',
+    mistralApiKey: process.env.MISTRAL_API_KEY ?? '',
+    mistralEndpoint: process.env.MISTRAL_ENDPOINT ?? 'https://api.mistral.ai/v1',
+    mistralModel: process.env.MISTRAL_MODEL ?? 'mistral-small-2603',
+    embedModel: process.env.EMBED_MODEL ?? 'mistral-embed',
+    ocrModel: process.env.OCR_MODEL ?? 'mistral-ocr-latest',
   };
-}
-
-  // Mistral
-  mistralApiKey: process.env.MISTRAL_API_KEY ?? '',
-  mistralModel: process.env.MISTRAL_MODEL ?? 'mistral-large-latest',
-  mistralEndpoint: process.env.MISTRAL_ENDPOINT ?? 'https://api.mistral.ai/v1',
 }
