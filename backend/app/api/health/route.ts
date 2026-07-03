@@ -1,0 +1,1 @@
+export async function GET(){return Response.json({status:'ok',version:'2.1.0',language:'ru',models:{text:'nemotron-3-ultra-free',vision:'mimo-v2.5-free'},provider:'opencode (zen)',timestamp:new Date().toISOString()})}

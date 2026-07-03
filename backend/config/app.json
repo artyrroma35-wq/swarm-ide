@@ -1,0 +1,1 @@
+{"tokenLimit":100000,"models":{"text":"nemotron-3-ultra-free","vision":"mimo-v2.5-free"},"provider":{"name":"opencode","type":"zen","baseUrl":"https://opencode.ai/zen/v1"}}

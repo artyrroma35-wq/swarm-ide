@@ -1,0 +1,11 @@
+{
+  "name": "swarm-ide-ru",
+  "private": true,
+  "version": "2.0.0",
+  "description": "Swarm IDE — Полностью переработанная русская версия",
+  "scripts": {
+    "dev": "cd backend && npx next dev -H 0.0.0.0 -p 3017",
+    "build": "cd backend && npx next build",
+    "start": "cd backend && npx next start -H 0.0.0.0 -p 3017"
+  }
+}

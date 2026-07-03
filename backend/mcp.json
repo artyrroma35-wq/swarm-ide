@@ -1,0 +1,21 @@
+{
+    "mcpServers": {
+        "filesystem": {
+            "description": "File System — чтение/запись файлов",
+            "type": "stdio",
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+            "disabled": false
+        },
+        "github": {
+            "description": "GitHub — управление репозиториями",
+            "type": "stdio", 
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-github"],
+            "env": {
+                "GITHUB_TOKEN": ""
+            },
+            "disabled": true
+        }
+    }
+}
