@@ -1,6 +1,6 @@
 import type { ToolDefinition } from '../lib/llm';
 import { getSandbox } from '../sandbox/unlimited-sandbox';
-import { generateImage, generateVideo, generateVariations } from '../image-gen/agnes-studio';
+import { generateImage, generateVideo } from '../image-gen/agnes-studio';
 import { analyzeImage } from '../lib/vision';
 import { db } from '../db/client';
 
@@ -169,12 +169,11 @@ const tools: ToolHandler[] = [
         width: (args.width as number) || 1024,
         height: (args.height as number) || 1024,
         model: (args.model as string) || 'flux',
-        seed: Math.floor(Math.random() * 10000000),
       });
       return {
         success: true,
-        output: `✅ Изображение сгенерировано!\nURL: ${r.url}\nРазмер: ${r.width}x${r.height}\nSeed: ${r.seed}`,
-        data: { url: r.url, width: r.width, height: r.height, seed: r.seed },
+        output: `✅ Изображение сгенерировано!\nURL: ${r.url}\nРазмер: ${r.width}x${r.height}`,
+        data: { url: r.url, width: r.width, height: r.height },
       };
     },
   },
@@ -195,7 +194,6 @@ const tools: ToolHandler[] = [
     execute: async (args) => {
       const r = await generateVideo(args.prompt as string, {
         duration: (args.duration as number) || 5,
-        hfApiKey: (args.hfApiKey as string) || undefined,
       });
       if (r.fallback) {
         return { success: true, output: `Видео-генерация: ${r.url}${r.error ? '\n' + r.error : ''}`, data: { url: r.url, api: r.api, fallback: true } };

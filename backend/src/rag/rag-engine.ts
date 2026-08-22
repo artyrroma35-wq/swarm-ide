@@ -8,7 +8,7 @@ export class RAGEngine {
     this.documents.set(id, { content, metadata, chunks });
     const bc = getBillionContext();
     for (let i = 0; i < chunks.length; i++) {
-      await bc.remember(chunks[i], { workspaceId: metadata.workspaceId, importance: 0.4, type: 'rag_document' as any });
+      await bc.remember(chunks[i], { workspaceId: metadata.workspaceId, importance: 0.4 });
     }
   }
 

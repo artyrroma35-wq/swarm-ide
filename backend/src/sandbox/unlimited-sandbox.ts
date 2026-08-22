@@ -24,7 +24,7 @@ export interface SandboxResult {
 }
 
 export class RealRootSandbox {
-  private sandboxDir = '/home/user/swarm-sandbox';
+  private sandboxDir = process.env.SANDBOX_DIR || join(process.cwd(), '.swarm-sandbox');
   private pkgs = new Set<string>();
   private processes = new Map<string, number>();
 
@@ -71,7 +71,7 @@ export class RealRootSandbox {
           cwd,
           stdio: 'ignore',
           detached: true,
-          env: { ...process.env, HOME: '/root' },
+          env: { ...process.env, HOME: '/root' } as any,
         });
         proc.unref();
         const name = opts.name || `proc_${Date.now()}`;
@@ -133,7 +133,7 @@ export class RealRootSandbox {
   /**
    * Установка пакетов — реальная, с root
    */
-  install(pkg: string, type: 'apt' | 'npm' | 'pip' | 'go' | 'cargo' | 'gem' | 'brew' = 'apt'): SandboxResult {
+  install(pkg: string, type: 'apt' | 'npm' | 'pip' | 'pip3' | 'go' | 'cargo' | 'gem' | 'brew' = 'apt'): SandboxResult {
     const key = `${type}:${pkg}`;
     if (this.pkgs.has(key)) {
       return {
@@ -236,10 +236,9 @@ export class RealRootSandbox {
    */
   startServer(port: number, command: string, name?: string): SandboxResult {
     const serverName = name || `server_${port}`;
-    return this.exec(`cd ${this.sandboxDir} && ${command}`, {
+    return this.exec(`cd ${this.sandboxDir} && PORT=${port} ${command}`, {
       background: true,
       name: serverName,
-      env: { PORT: port.toString(), SANDBOX_DIR: this.sandboxDir } as any,
     });
   }
 
