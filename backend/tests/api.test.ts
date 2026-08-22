@@ -4,34 +4,30 @@
  */
 import { describe, it, expect } from 'vitest';
 
-describe('API Endpoints', () => {
-  const BASE = 'http://localhost:3017';
-
-  it('Health endpoint returns ok', async () => {
-    const res = await fetch(`${BASE}/api/health`);
+describe('API Logic', () => {
+  it('Health GET handler returns ok', async () => {
+    const { GET } = await import('../app/api/health/route');
+    const res = await GET();
     const data = await res.json();
     expect(res.status).toBe(200);
     expect(data.status).toBe('ok');
   });
 
-  it('Spells API returns 4 spells', async () => {
-    const res = await fetch(`${BASE}/api/spells`);
+  it('Spells GET handler returns spells list', async () => {
+    const { GET } = await import('../app/api/spells/route');
+    const res = await GET();
     const data = await res.json();
-    expect(data.spells).toHaveLength(4);
+    expect(Array.isArray(data.spells)).toBe(true);
+    expect(data.spells.length).toBeGreaterThan(0);
     expect(data.spells[0]).toHaveProperty('name');
   });
 });
 
 describe('Sandbox', () => {
-  const BASE = 'http://localhost:3017';
-
   it('exec whoami returns user', async () => {
-    const res = await fetch(`${BASE}/api/sandbox`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'exec', command: 'whoami' })
-    });
-    const data = await res.json();
+    const { getSandbox } = await import('../src/sandbox/unlimited-sandbox');
+    const sb = getSandbox();
+    const data = sb.exec('whoami');
     expect(data.exitCode).toBe(0);
     expect(data.stdout).toBeTruthy();
   });

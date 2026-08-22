@@ -1,6 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { Bot, MessageSquare, Settings, ChevronRight, Brain, Image, Video, Terminal, Wrench, TestTube, BarChart3, BookOpen, Download, Globe, Users, Share2, Layers, Code2 } from 'lucide-react';
+import { Bot, MessageSquare, Settings, ChevronRight, Brain, Image, Video, Terminal, Wrench, TestTube, BarChart3, BookOpen, Download, Globe, Users, Share2, Layers, Code2, Activity } from 'lucide-react';
 
 const features = [
   { icon: MessageSquare, label: 'Чат с агентами', path: '/im', desc: 'Групповые чаты, @упоминания, рои', color: '#38bdf8' },
