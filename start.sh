@@ -8,24 +8,28 @@ PORT=${PORT:-3017}
 
 echo ""
 echo "╔══════════════════════════════════════════════════╗"
-echo "║   🚀 SWARM IDE — ЗАПУСК                       ║"
+echo "║   🚀 SWARM IDE — ЗАПУСК                         ║"
 echo "╚══════════════════════════════════════════════════╝"
 echo ""
 
 # ШАГ 1: Файлы
 echo "📁 1. Проект: $(find "$SWARM_DIR" -type f -not -path '*/node_modules/*' -not -path '*/.next/*' -not -path '*/.git/*' 2>/dev/null | wc -l) файлов"
 
-# ШАГ 2: Ключи
+# ШАГ 2: Ключи (секреты НЕ хранятся в репозитории — берём из .env.local / переменных окружения)
 if [ ! -f "$SWARM_DIR/backend/.env.local" ]; then
     cat > "$SWARM_DIR/backend/.env.local" << 'ENV'
-OPENCODE_ZEN_API_KEY=sk-JTvWimvHHBiCWBiHa0lvkV4gbMqovyJlUKiyvn8yccRX1EFvS1eYccRdRcYFjdJF
+# Вставьте свои ключи (см. backend/.env.example):
+#   OPENCODE_ZEN_API_KEY — с opencode.ai/auth
+#   MISTRAL_API_KEY      — с console.mistral.ai/api-keys
+#   AGNES_API_KEY        — с agnes-ai.com
+OPENCODE_ZEN_API_KEY=
 TEXT_MODEL=nemotron-3-ultra-free
 VISION_MODEL=mimo-v2.5-free
-JWT_SECRET=swarm-ide-secret-2024
-AGNES_API_KEY=sk-1WuU70C1md0RoYyiCwzQEhirUrkmNudIBHNfvuzNUb82vale
+JWT_SECRET=change-me-in-production
+AGNES_API_KEY=
 AGNES_ENDPOINT=https://apihub.agnes-ai.com/v1
 ENV
-    echo "   ✅ .env.local восстановлен"
+    echo "   ⚠️  Создан backend/.env.local — заполните API-ключи и перезапустите"
 fi
 
 # ШАГ 3: Зависимости

@@ -57,4 +57,4 @@ export class SwarmEngine {
     return lines.join('\n');
   }
 }
-export const swarmEngine = new SwarmEngine();
+export const swarmEngine: SwarmEngine = (globalThis as any).__swarmSwarmEngine ?? ((globalThis as any).__swarmSwarmEngine = new SwarmEngine());

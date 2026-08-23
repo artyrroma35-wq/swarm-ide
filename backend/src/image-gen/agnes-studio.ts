@@ -1,7 +1,7 @@
 /**
  * 🎨 Agnes AI — ИЗОБРАЖЕНИЯ + ВИДЕО
  * 
- * Проверено: ключ sk-1Wu... 🟢 РАБОТАЕТ
+ * Проверено: ключ из env AGNES_API_KEY
  * Модели: agnes-image-2.1-flash, agnes-video-v2.0
  */
 

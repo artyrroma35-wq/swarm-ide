@@ -41,4 +41,4 @@ export class Analytics {
     };
   }
 }
-export const analytics = new Analytics();
+export const analytics: Analytics = (globalThis as any).__swarmAnalytics ?? ((globalThis as any).__swarmAnalytics = new Analytics());

@@ -26,6 +26,7 @@ export async function POST(req: Request, { params }: { params: { groupId: string
     id: msgId, workspaceId: wsId, groupId, senderId,
     contentType: body?.contentType ?? 'text',
     content, sendTime: new Date().toISOString(),
+    reasoningContent: null, toolCalls: null, toolResults: null,
   });
 
   eventBus.emit(`workspace:${wsId}`, { event: 'new_message', data: { groupId, message } });

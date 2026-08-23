@@ -14,7 +14,7 @@ export class GroupChatManager {
       replyTo: opts.replyTo, mentions: opts.mentions||[], attachments: opts.attachments||[],
       sendTime: new Date().toISOString(),
     };
-    await db.createMessage({ id: msg.id, workspaceId: '', groupId, senderId, contentType: 'group_chat', content, sendTime: msg.sendTime });
+    await db.createMessage({ id: msg.id, workspaceId: '', groupId, senderId, contentType: 'group_chat', content, sendTime: msg.sendTime, reasoningContent: null, toolCalls: null, toolResults: null });
     eventBus.emit(`group:${groupId}`, { event: 'group_message', data: msg });
 
     // Уведомления для @упоминаний
@@ -42,4 +42,4 @@ export class GroupChatManager {
   }
 }
 
-export const groupChat = new GroupChatManager();
+export const groupChat: GroupChatManager = (globalThis as any).__swarmGroupChat ?? ((globalThis as any).__swarmGroupChat = new GroupChatManager());

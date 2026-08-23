@@ -51,6 +51,7 @@ export class RealRootSandbox {
     sudo?: boolean;
     background?: boolean;
     name?: string;
+    env?: Record<string, string>;
   } = {}): SandboxResult {
     const start = Date.now();
     const cwd = opts.cwd || this.sandboxDir;
@@ -71,7 +72,7 @@ export class RealRootSandbox {
           cwd,
           stdio: 'ignore',
           detached: true,
-          env: { ...process.env, HOME: '/root' },
+          env: { ...process.env, HOME: '/root', ...opts.env },
         });
         proc.unref();
         const name = opts.name || `proc_${Date.now()}`;
@@ -105,7 +106,7 @@ export class RealRootSandbox {
         maxBuffer: 100 * 1024 * 1024,
         encoding: 'utf-8',
         shell: '/bin/bash',
-        env: { ...process.env },
+        env: { ...process.env, ...opts.env },
       });
       return {
         stdout: (out || '').trim(),
@@ -133,7 +134,7 @@ export class RealRootSandbox {
   /**
    * Установка пакетов — реальная, с root
    */
-  install(pkg: string, type: 'apt' | 'npm' | 'pip' | 'go' | 'cargo' | 'gem' | 'brew' = 'apt'): SandboxResult {
+  install(pkg: string, type: 'apt' | 'npm' | 'pip' | 'pip3' | 'go' | 'cargo' | 'gem' | 'brew' = 'apt'): SandboxResult {
     const key = `${type}:${pkg}`;
     if (this.pkgs.has(key)) {
       return {
@@ -239,7 +240,7 @@ export class RealRootSandbox {
     return this.exec(`cd ${this.sandboxDir} && ${command}`, {
       background: true,
       name: serverName,
-      env: { PORT: port.toString(), SANDBOX_DIR: this.sandboxDir } as any,
+      env: { PORT: port.toString(), SANDBOX_DIR: this.sandboxDir },
     });
   }
 

@@ -30,4 +30,4 @@ export class AgentBuilder {
   }
 }
 
-export const agentBuilder = new AgentBuilder();
+export const agentBuilder: AgentBuilder = (globalThis as any).__swarmAgentBuilder ?? ((globalThis as any).__swarmAgentBuilder = new AgentBuilder());
