@@ -34,4 +34,4 @@ export class CollabManager {
     eventBus.emit(`workspace:${workspaceId}`, data);
   }
 }
-export const collabManager = new CollabManager();
+export const collabManager: CollabManager = (globalThis as any).__swarmCollabManager ?? ((globalThis as any).__swarmCollabManager = new CollabManager());

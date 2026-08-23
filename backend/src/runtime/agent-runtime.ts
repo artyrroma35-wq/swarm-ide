@@ -71,11 +71,11 @@ const MASTER_SYSTEM_PROMPT = `ТЫ — МОЩНЫЙ AI-АГЕНТ С НЕОГР�
 6. Если ошибся — признай и исправь
 7. Не говори «я не могу» — ЛУЧШЕ ПОПРОБУЙ
 8. Если модель дала плохой ответ — исправь и попробуй другой подход
-9. При ошибке инструмента — система автоматически повторит запрос``;
+9. При ошибке инструмента — система автоматически повторит запрос`;
 
 class AgentRuntime {
   private runners = new Map<UUID, AgentRunner>();
-  private interrupts = new Map<UUID, boolean>();
+  interrupts = new Map<UUID, boolean>();
 
   async wakeAgent(id: UUID, groupId?: string) {
     let r = this.runners.get(id);

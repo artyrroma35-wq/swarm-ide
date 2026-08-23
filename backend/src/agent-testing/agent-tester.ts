@@ -34,4 +34,4 @@ export class AgentTester {
     return results;
   }
 }
-export const agentTester = new AgentTester();
+export const agentTester: AgentTester = (globalThis as any).__swarmAgentTester ?? ((globalThis as any).__swarmAgentTester = new AgentTester());

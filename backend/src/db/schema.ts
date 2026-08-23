@@ -1,5 +1,15 @@
 import { pgTable, uuid, text, timestamp, integer, boolean, primaryKey } from 'drizzle-orm/pg-core';
 
+// ===================== ТИПЫ ДЛЯ IN-MEMORY СТОРА (src/db/client.ts) =====================
+export type UUID = string;
+export type WorkspaceRow = { id: UUID; name: string; settings: string | null; createdAt: string };
+export type AgentRow = { id: UUID; workspaceId: UUID; role: string; parentId: UUID | null; llmHistory: string; systemPrompt: string; model: string; status: string; createdAt: string };
+export type GroupRow = { id: UUID; workspaceId: UUID; name: string | null; contextTokens: number | null; createdAt: string };
+export type MessageRow = { id: UUID; workspaceId: UUID; groupId: UUID; senderId: UUID; contentType: string; content: string; reasoningContent: string | null; toolCalls: string | null; toolResults: string | null; sendTime: string };
+export type FileRow = { id: UUID; workspaceId: UUID; name: string; path: string; mimeType: string; size: number; uploadedAt: string };
+export type MCPServerRow = { id: UUID; workspaceId: UUID; name: string; url: string; tools: string; enabled: boolean; createdAt: string };
+
+
 export const workspaces = pgTable('workspaces', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),

@@ -24,4 +24,7 @@ class Store {
   async getOrCreateHumanAgent(wsId: UUID) { const all = await this.listAgents(wsId); const h = all.find(a => a.role === 'human'); if (h) return h; return this.createAgent({ id: this.id(), workspaceId: wsId, role: 'human', parentId: null, llmHistory: '[]', systemPrompt: 'Человек', model: '', status: 'idle', createdAt: new Date().toISOString() }); }
   async getOrCreateMainGroup(wsId: UUID, hId: UUID, aId: UUID) { const gs = await this.listGroups(wsId); const m = gs.find(g => g.name === 'Основной чат'); if (m) return m; const g = await this.createGroup({ id: this.id(), workspaceId: wsId, name: 'Основной чат', contextTokens: 0, createdAt: new Date().toISOString() }); await this.addGroupMember(g.id, hId); await this.addGroupMember(g.id, aId); return g; }
 }
-export const db = new Store();
+
+// Синглтон на globalThis — переживает HMR-перекомпиляцию модулей в dev-режиме
+const g = globalThis as any;
+export const db: Store = g.__swarmDb ?? (g.__swarmDb = new Store());

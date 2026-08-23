@@ -11,4 +11,4 @@ class EventBus {
     return () => this.sse.get(key)?.delete(ctrl);
   }
 }
-export const eventBus = new EventBus();
+export const eventBus: EventBus = (globalThis as any).__swarmEventBus ?? ((globalThis as any).__swarmEventBus = new EventBus());
