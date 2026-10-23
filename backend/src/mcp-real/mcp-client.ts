@@ -6,7 +6,7 @@
  * Автоматически регистрирует их в реестре инструментов
  */
 
-import { spawn, execSync } from 'child_process';
+import { spawn, execFileSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -82,11 +82,10 @@ export class MCPClient {
     const env = { ...process.env, ...(config.env || {}) };
 
     // Запускаем процесс и получаем список инструментов
-    const output = execSync(`${config.command} ${args.join(' ')}`, {
+    const output = execFileSync(config.command, args, {
       env,
       timeout: 10000,
       encoding: 'utf-8',
-      shell: '/bin/bash',
     });
 
     // В реальном MCP — парсинг JSON-RPC ответа
@@ -152,10 +151,12 @@ export class MCPClient {
     if (config.type === 'stdio' && config.command) {
       const cmdArgs = config.args || [];
       const env = { ...process.env, ...(config.env || {}) };
-      const result = execSync(
-        `${config.command} ${cmdArgs.join(' ')} --tool ${tool.toolName} --args '${JSON.stringify(args)}'`,
-        { env, timeout: 30000, encoding: 'utf-8', shell: '/bin/bash' }
-      );
+      const fullArgs = [...cmdArgs, '--tool', tool.toolName, '--args', JSON.stringify(args)];
+      const result = execFileSync(config.command, fullArgs, {
+        env,
+        timeout: 30000,
+        encoding: 'utf-8',
+      });
       try { return JSON.parse(result); } catch { return { result }; }
     }
 
